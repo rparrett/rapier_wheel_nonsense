@@ -25,7 +25,7 @@ fn main() {
                 setup_ui,
             ),
         )
-        .add_systems(Update, (pause_physics, pan_camera, enable_gravity))
+        .add_systems(Update, (pause_physics, enable_gravity))
         .run();
 }
 
@@ -43,7 +43,7 @@ fn setup_scene(mut commands: Commands) {
 }
 
 fn setup_bike(mut commands: Commands) {
-    let _bike = commands
+    let bike = commands
         .spawn((
             Name::new("Bike"),
             TransformBundle::default(),
@@ -51,25 +51,22 @@ fn setup_bike(mut commands: Commands) {
             Collider::cuboid(0.5, 0.5, 2.0),
             CollisionGroups::new(Group::GROUP_2, Group::GROUP_1),
         ))
-        .with_children(|parent| {
-            let parent_entity = parent.parent_entity();
-
-            let joint = RevoluteJointBuilder::new(Vec3::X)
-                .local_anchor1(Vec3::ZERO)
-                .local_anchor2(Vec3::ZERO);
-
-            parent.spawn((
-                Name::new("FrontWheelCollider"),
-                RigidBody::Dynamic,
-                TransformBundle::from_transform(Transform::from_rotation(Quat::from_rotation_z(
-                    std::f32::consts::FRAC_PI_2,
-                ))),
-                Collider::round_cylinder(0.025, 0.8, 0.025),
-                CollisionGroups::new(Group::GROUP_3, Group::GROUP_1),
-                ImpulseJoint::new(parent_entity, joint),
-            ));
-        })
         .id();
+
+    let joint = RevoluteJointBuilder::new(Vec3::X)
+        .local_anchor1(Vec3::ZERO)
+        .local_anchor2(Vec3::ZERO);
+
+    commands.spawn((
+        Name::new("WheelCollider"),
+        RigidBody::Dynamic,
+        TransformBundle::from_transform(Transform::from_rotation(Quat::from_rotation_z(
+            std::f32::consts::FRAC_PI_2,
+        ))),
+        Collider::round_cylinder(0.025, 0.8, 0.025),
+        CollisionGroups::new(Group::GROUP_3, Group::GROUP_1),
+        ImpulseJoint::new(bike, joint),
+    ));
 }
 
 fn setup_camera(mut commands: Commands) {
@@ -117,27 +114,5 @@ fn enable_gravity(mut rapier: ResMut<RapierConfiguration>, buttons: Res<ButtonIn
         } else {
             Vec3::ZERO
         };
-    }
-}
-
-fn pan_camera(
-    mut query: Query<&mut Transform, With<Camera>>,
-    keys: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
-) {
-    let x = keys.any_pressed([KeyCode::ArrowRight, KeyCode::KeyD]) as i8
-        - keys.any_pressed([KeyCode::ArrowLeft, KeyCode::KeyA]) as i8;
-    let y = keys.any_pressed([KeyCode::ArrowUp, KeyCode::KeyW]) as i8
-        - keys.any_pressed([KeyCode::ArrowDown, KeyCode::KeyS]) as i8;
-    let dir = Vec2::new(x as f32, y as f32).normalize_or_zero();
-
-    if dir == Vec2::ZERO {
-        return;
-    }
-
-    for mut transform in &mut query {
-        let three = dir.extend(0.);
-        let rotated = transform.rotation.mul_vec3(three);
-        transform.translation += rotated * time.delta_seconds();
     }
 }
