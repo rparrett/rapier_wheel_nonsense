@@ -61,7 +61,7 @@ fn setup_bike(mut commands: Commands) {
         TransformBundle::from_transform(Transform::from_rotation(Quat::from_rotation_z(
             std::f32::consts::FRAC_PI_2,
         ))),
-        Collider::round_cylinder(0.025, 0.8, 0.025),
+        Collider::cylinder(0.025, 0.8),
         ImpulseJoint::new(bike, joint),
     ));
 }
