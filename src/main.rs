@@ -3,7 +3,7 @@
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_rapier3d::{
     dynamics::{ImpulseJoint, RevoluteJointBuilder, RigidBody},
-    geometry::{Collider, CollisionGroups, Group},
+    geometry::Collider,
     plugin::{NoUserData, RapierConfiguration, RapierPhysicsPlugin},
     render::RapierDebugRenderPlugin,
 };
@@ -35,10 +35,6 @@ fn setup_scene(mut commands: Commands) {
         TransformBundle::from_transform(Transform::from_xyz(0., -1.0, 0.)),
         RigidBody::Fixed,
         Collider::cylinder(0.05, 5.0),
-        CollisionGroups::new(
-            Group::GROUP_1,
-            Group::GROUP_1 | Group::GROUP_2 | Group::GROUP_3,
-        ),
     ));
 }
 
@@ -49,13 +45,15 @@ fn setup_bike(mut commands: Commands) {
             TransformBundle::default(),
             RigidBody::Dynamic,
             Collider::cuboid(0.5, 0.5, 2.0),
-            CollisionGroups::new(Group::GROUP_2, Group::GROUP_1),
         ))
         .id();
 
-    let joint = RevoluteJointBuilder::new(Vec3::X)
+    let mut joint = RevoluteJointBuilder::new(Vec3::X)
         .local_anchor1(Vec3::ZERO)
-        .local_anchor2(Vec3::ZERO);
+        .local_anchor2(Vec3::ZERO)
+        .build();
+
+    joint.set_contacts_enabled(false);
 
     commands.spawn((
         Name::new("WheelCollider"),
@@ -64,7 +62,6 @@ fn setup_bike(mut commands: Commands) {
             std::f32::consts::FRAC_PI_2,
         ))),
         Collider::round_cylinder(0.025, 0.8, 0.025),
-        CollisionGroups::new(Group::GROUP_3, Group::GROUP_1),
         ImpulseJoint::new(bike, joint),
     ));
 }
