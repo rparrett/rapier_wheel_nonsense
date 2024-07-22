@@ -40,26 +40,30 @@ fn setup_scene(mut commands: Commands) {
 
 fn setup_bike(mut commands: Commands) {
     let bike = commands
-        .spawn((
-            Name::new("Bike"),
-            TransformBundle::default(),
-            RigidBody::Dynamic,
-            Collider::cuboid(0.5, 0.5, 2.0),
-        ))
+        .spawn((TransformBundle::default(), RigidBody::Dynamic))
+        .with_children(|parent| {
+            parent.spawn((
+                TransformBundle::from_transform(Transform::from_xyz(0.0, 0.0, -1.5)),
+                Collider::cuboid(0.5, 0.2, 0.6),
+            ));
+            parent.spawn((
+                TransformBundle::from_transform(Transform::from_xyz(0.0, 0.0, 1.5)),
+                Collider::cuboid(0.5, 0.2, 0.6),
+            ));
+        })
         .id();
 
-    let mut joint = RevoluteJointBuilder::new(Vec3::X)
+    // https://github.com/dimforge/bevy_rapier/issues/457
+    let mut joint: GenericJoint = RevoluteJointBuilder::new(Vec3::X)
         .local_anchor1(Vec3::ZERO)
         .local_anchor2(Vec3::ZERO)
-        .build();
-    joint.set_contacts_enabled(false);
-    // https://github.com/dimforge/bevy_rapier/issues/457
-    let mut joint: GenericJoint = joint.into();
+        .build()
+        .into();
+
     joint.set_local_basis2(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2));
 
     let wheel = commands
         .spawn((
-            Name::new("WheelCollider"),
             RigidBody::Dynamic,
             Collider::cylinder(0.4, 0.8),
             ImpulseJoint::new(bike, TypedJoint::GenericJoint(joint)),
@@ -72,7 +76,7 @@ fn setup_bike(mut commands: Commands) {
 //
 
 fn setup_camera(mut commands: Commands) {
-    commands.spawn((Camera3dBundle {
+    commands.spawn(Camera3dBundle {
         projection: OrthographicProjection {
             scaling_mode: ScalingMode::FixedVertical(3.0),
             ..default()
@@ -80,7 +84,7 @@ fn setup_camera(mut commands: Commands) {
         .into(),
         transform: Transform::from_xyz(2.0, 0.0, 0.0).looking_at(Vec3::new(0., 0.0, 0.), Vec3::Y),
         ..default()
-    },));
+    });
 }
 
 fn setup_physics(mut rapier: ResMut<RapierConfiguration>) {
