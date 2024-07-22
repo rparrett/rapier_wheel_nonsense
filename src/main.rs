@@ -25,7 +25,7 @@ fn main() {
                 setup_ui,
             ),
         )
-        .add_systems(Update, (pause_physics, enable_gravity))
+        .add_systems(Update, (pause_physics, enable_gravity, print))
         .run();
 }
 
@@ -55,15 +55,19 @@ fn setup_bike(mut commands: Commands) {
 
     joint.set_contacts_enabled(false);
 
-    commands.spawn((
-        Name::new("WheelCollider"),
-        RigidBody::Dynamic,
-        TransformBundle::from_transform(Transform::from_rotation(Quat::from_rotation_z(
-            std::f32::consts::FRAC_PI_2,
-        ))),
-        Collider::cylinder(0.025, 0.8),
-        ImpulseJoint::new(bike, joint),
-    ));
+    let wheel = commands
+        .spawn((
+            Name::new("WheelCollider"),
+            RigidBody::Dynamic,
+            TransformBundle::from_transform(Transform::from_rotation(Quat::from_rotation_z(
+                std::f32::consts::FRAC_PI_2,
+            ))),
+            Collider::cylinder(0.025, 0.8),
+            ImpulseJoint::new(bike, joint),
+        ))
+        .id();
+
+    info!("Wheel Entity: {}", wheel);
 }
 
 fn setup_camera(mut commands: Commands) {
@@ -101,6 +105,7 @@ fn setup_ui(mut commands: Commands) {
 fn pause_physics(mut rapier: ResMut<RapierConfiguration>, buttons: Res<ButtonInput<KeyCode>>) {
     if buttons.just_pressed(KeyCode::KeyP) {
         rapier.physics_pipeline_active = !rapier.physics_pipeline_active;
+        info!("physics: {:?}", rapier.physics_pipeline_active);
     }
 }
 
@@ -111,5 +116,13 @@ fn enable_gravity(mut rapier: ResMut<RapierConfiguration>, buttons: Res<ButtonIn
         } else {
             Vec3::ZERO
         };
+        info!("gravity: {:?}", rapier.gravity);
+    }
+}
+
+fn print(query: Query<(Entity, &GlobalTransform), (With<Collider>, Changed<GlobalTransform>)>) {
+    for (e, gt) in &query {
+        let (_s, r, _t) = gt.to_scale_rotation_translation();
+        info!("{e} {:?}", r.to_euler(EulerRot::XYZ));
     }
 }
