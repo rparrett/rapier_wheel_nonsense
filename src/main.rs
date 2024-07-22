@@ -2,7 +2,7 @@
 
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_rapier3d::{
-    dynamics::{ImpulseJoint, RevoluteJointBuilder, RigidBody},
+    dynamics::{GenericJoint, ImpulseJoint, RevoluteJointBuilder, RigidBody, TypedJoint},
     geometry::Collider,
     plugin::{NoUserData, RapierConfiguration, RapierPhysicsPlugin},
     render::RapierDebugRenderPlugin,
@@ -25,7 +25,7 @@ fn main() {
                 setup_ui,
             ),
         )
-        .add_systems(Update, (pause_physics, enable_gravity, print))
+        .add_systems(Update, (pause_physics, enable_gravity, print, update_ui))
         .run();
 }
 
@@ -52,23 +52,24 @@ fn setup_bike(mut commands: Commands) {
         .local_anchor1(Vec3::ZERO)
         .local_anchor2(Vec3::ZERO)
         .build();
-
     joint.set_contacts_enabled(false);
+    // https://github.com/dimforge/bevy_rapier/issues/457
+    let mut joint: GenericJoint = joint.into();
+    joint.set_local_basis2(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2));
 
     let wheel = commands
         .spawn((
             Name::new("WheelCollider"),
             RigidBody::Dynamic,
-            TransformBundle::from_transform(Transform::from_rotation(Quat::from_rotation_z(
-                std::f32::consts::FRAC_PI_2,
-            ))),
-            Collider::cylinder(0.025, 0.8),
-            ImpulseJoint::new(bike, joint),
+            Collider::cylinder(0.4, 0.8),
+            ImpulseJoint::new(bike, TypedJoint::GenericJoint(joint)),
         ))
         .id();
 
     info!("Wheel Entity: {}", wheel);
 }
+
+//
 
 fn setup_camera(mut commands: Commands) {
     commands.spawn((Camera3dBundle {
@@ -89,17 +90,48 @@ fn setup_physics(mut rapier: ResMut<RapierConfiguration>) {
 
 fn setup_ui(mut commands: Commands) {
     commands.spawn(
-        TextBundle::from_section(
-            "Press p to toggle physics\nPress g to toggle gravity",
-            TextStyle::default(),
-        )
+        TextBundle::from_sections([
+            "Physics: ".into(),
+            "OFF".into(),
+            " (p)\n".into(),
+            "Gravity: ".into(),
+            "OFF".into(),
+            " (g)".into(),
+        ])
         .with_style(Style {
             position_type: PositionType::Absolute,
-            top: Val::Px(12.0),
-            left: Val::Px(12.0),
+            top: Val::Px(12.),
+            left: Val::Px(12.),
             ..default()
         }),
     );
+}
+
+fn update_ui(mut query: Query<&mut Text>, rapier: Res<RapierConfiguration>) {
+    let Ok(mut text) = query.get_single_mut() else {
+        return;
+    };
+
+    if !rapier.is_changed() {
+        return;
+    }
+
+    fn state_txt(state: bool) -> &'static str {
+        if state {
+            "ON"
+        } else {
+            "OFF"
+        }
+    }
+
+    text.sections[1].value.clear();
+    text.sections[1]
+        .value
+        .push_str(state_txt(rapier.physics_pipeline_active));
+    text.sections[4].value.clear();
+    text.sections[4]
+        .value
+        .push_str(state_txt(rapier.gravity != Vec3::ZERO));
 }
 
 fn pause_physics(mut rapier: ResMut<RapierConfiguration>, buttons: Res<ButtonInput<KeyCode>>) {
