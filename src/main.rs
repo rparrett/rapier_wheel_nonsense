@@ -53,21 +53,25 @@ fn setup_bike(mut commands: Commands) {
         })
         .id();
 
-    // https://github.com/dimforge/bevy_rapier/issues/457
-    let mut joint: GenericJoint = RevoluteJointBuilder::new(Vec3::X)
+    let joint = RevoluteJointBuilder::new(Vec3::X)
         .local_anchor1(Vec3::ZERO)
         .local_anchor2(Vec3::ZERO)
-        .build()
-        .into();
-
-    joint.set_local_basis2(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2));
+        .build();
 
     let wheel = commands
         .spawn((
             RigidBody::Dynamic,
-            Collider::cylinder(0.4, 0.8),
-            ImpulseJoint::new(bike, TypedJoint::GenericJoint(joint)),
+            TransformBundle::default(),
+            ImpulseJoint::new(bike, joint),
         ))
+        .with_children(|parent| {
+            parent.spawn((
+                TransformBundle::from_transform(Transform::from_rotation(Quat::from_rotation_z(
+                    std::f32::consts::FRAC_PI_2,
+                ))),
+                Collider::cylinder(0.4, 0.8),
+            ));
+        })
         .id();
 
     info!("Wheel Entity: {}", wheel);
